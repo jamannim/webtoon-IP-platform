@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useAppStore } from '@/lib/store';
-import { Search, Filter, ShieldCheck, Heart, Sparkles, ArrowRight } from 'lucide-react';
+import { Search, Filter, ShieldCheck, Heart, Sparkles, ArrowRight, Scissors } from 'lucide-react';
 import Badge from '@/components/common/Badge';
 
 export default function StorePage() {
@@ -12,7 +12,7 @@ export default function StorePage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortBy, setSortBy] = useState<'POPULAR' | 'NEWEST' | 'NAME'>('POPULAR');
 
-  const genres = ['전체', 'SF 액션', '로맨스 판타지', '학원 액션', '힐링 일상'];
+  const genres = ['전체', '현대 판타지', '무협/판타지', '로맨스 판타지', 'SF 액션', '학원 액션', '힐링 일상', '드라마'];
 
   const filteredWebtoons = useMemo(() => {
     return webtoons
@@ -106,24 +106,35 @@ export default function StorePage() {
               className="group rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-indigo-500/50 p-4 transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/10 flex flex-col justify-between"
             >
               <div>
-                <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-slate-950 border border-slate-800 mb-4 group-hover:scale-[1.02] transition-transform">
+                <div className="relative aspect-[55/85] rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 mb-4 group-hover:scale-[1.02] transition-transform shadow-lg group-hover:shadow-indigo-500/20">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={ip.thumbnailUrl}
                     alt={ip.title}
                     className="w-full h-full object-cover"
                   />
+                  {/* Die-cut Cut Line Simulation Overlay */}
+                  <div className="absolute inset-1.5 border border-amber-400/50 rounded-xl pointer-events-none" />
+                  
                   <div className="absolute top-2.5 left-2.5">
                     <Badge variant="primary" size="sm">
                       {ip.genre}
                     </Badge>
                   </div>
-                  {ip.officialBadge && (
-                    <div className="absolute bottom-2.5 right-2.5 bg-black/70 backdrop-blur-md px-2 py-0.5 rounded text-[10px] text-emerald-400 font-bold border border-emerald-500/30 flex items-center gap-1">
-                      <ShieldCheck className="w-3 h-3" />
-                      <span>공식인증</span>
-                    </div>
-                  )}
+
+                  <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none">
+                    <span className="bg-black/75 backdrop-blur-md px-2 py-0.5 rounded text-[10px] text-amber-300 font-bold border border-amber-500/40 flex items-center gap-1">
+                      <Scissors className="w-2.5 h-2.5" />
+                      <span>55x85mm 재단</span>
+                    </span>
+
+                    {ip.officialBadge && (
+                      <div className="bg-black/75 backdrop-blur-md px-2 py-0.5 rounded text-[10px] text-emerald-400 font-bold border border-emerald-500/30 flex items-center gap-1">
+                        <ShieldCheck className="w-3 h-3" />
+                        <span>공식인증</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <h3 className="font-bold text-white text-base group-hover:text-indigo-300 transition-colors line-clamp-1">
@@ -136,9 +147,9 @@ export default function StorePage() {
 
               <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between">
                 <span className="text-[11px] text-slate-400">{ip.author}</span>
-                <span className="inline-flex items-center gap-1 text-xs font-bold text-indigo-400 group-hover:translate-x-1 transition-transform">
-                  <span>작품 보기</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                <span className="inline-flex items-center gap-1 text-xs font-bold text-indigo-400 group-hover:text-indigo-300">
+                  <span>포토카드 편집</span>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                 </span>
               </div>
             </Link>

@@ -14,11 +14,20 @@ export interface User {
 
 export type WebtoonStatus = 'ACTIVE' | 'UPCOMING' | 'EXPIRED';
 
+export type WebtoonGenre = 
+  | '로맨스 판타지' 
+  | 'SF 액션' 
+  | '학원 액션' 
+  | '힐링 일상' 
+  | '무협/판타지'
+  | '현대 판타지'
+  | '드라마';
+
 export interface WebtoonIP {
   id: string;
   title: string;
   author: string;
-  genre: '로맨스 판타지' | 'SF 액션' | '학원 액션' | '힐링 일상' | '무협/판타지';
+  genre: WebtoonGenre;
   description: string;
   summary: string;
   bannerUrl: string;

@@ -11,7 +11,9 @@ import {
   Palette, 
   Sparkles, 
   Calendar,
-  Users
+  Users,
+  Scissors,
+  Maximize2
 } from 'lucide-react';
 
 export function generateStaticParams() {
@@ -56,15 +58,55 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
       {/* Hero Visual Area */}
       <div className="relative rounded-3xl bg-slate-900 border border-slate-800 p-6 sm:p-10 overflow-hidden mb-12 shadow-2xl">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
-          {/* Thumbnail */}
-          <div className="lg:col-span-4 flex justify-center">
-            <div className="w-56 sm:w-64 aspect-[3/4] rounded-2xl overflow-hidden border border-slate-700 shadow-2xl bg-slate-950">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={ip.thumbnailUrl}
-                alt={ip.title}
-                className="w-full h-full object-cover"
-              />
+          {/* Thumbnail: 포토카드 55x85mm 실물 재단 툴 프리뷰 */}
+          <div className="lg:col-span-4 flex flex-col items-center">
+            <div className="relative p-2 bg-slate-950/80 rounded-3xl border border-slate-700/80 shadow-2xl">
+              {/* Die-cut Crop Marks */}
+              <div className="absolute top-1 left-1 w-2.5 h-0.5 bg-rose-500/80" />
+              <div className="absolute top-1 left-1 w-0.5 h-2.5 bg-rose-500/80" />
+              <div className="absolute top-1 right-1 w-2.5 h-0.5 bg-rose-500/80" />
+              <div className="absolute top-1 right-1 w-0.5 h-2.5 bg-rose-500/80" />
+              <div className="absolute bottom-1 left-1 w-2.5 h-0.5 bg-rose-500/80" />
+              <div className="absolute bottom-1 left-1 w-0.5 h-2.5 bg-rose-500/80" />
+              <div className="absolute bottom-1 right-1 w-2.5 h-0.5 bg-rose-500/80" />
+              <div className="absolute bottom-1 right-1 w-0.5 h-2.5 bg-rose-500/80" />
+
+              {/* Photocard Die-cut Frame (55x85mm aspect ratio) */}
+              <div className="w-56 sm:w-60 aspect-[55/85] rounded-2xl overflow-hidden relative shadow-2xl ring-2 ring-indigo-500/30 group">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={ip.thumbnailUrl}
+                  alt={ip.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+
+                {/* Real Glossy Hologram Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none" />
+
+                {/* Die-cut Trim Guide Overlay */}
+                <div className="absolute inset-1.5 border border-amber-400/70 rounded-xl pointer-events-none flex flex-col justify-between p-2">
+                  <div className="flex items-center justify-between text-[9px] font-bold text-amber-300 bg-slate-950/80 px-1.5 py-0.5 rounded backdrop-blur-sm self-start">
+                    <span className="flex items-center gap-0.5">
+                      <Scissors className="w-2.5 h-2.5" />
+                      <span>R4 다이컷 칼선</span>
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-bold text-emerald-300 bg-slate-950/80 px-1.5 py-0.5 rounded border border-emerald-500/30">
+                      300 DPI 안전영역
+                    </span>
+                    <span className="text-[8px] font-semibold text-slate-300 bg-black/60 px-1 rounded">
+                      55x85mm
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-400">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span>포토카드 출력 재단 규격(55x85mm) 자동 입힘 완료</span>
             </div>
           </div>
 
@@ -112,7 +154,7 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
               <Link href={`/editor?ipId=${ip.id}`}>
                 <Button size="lg" className="shadow-indigo-500/30">
                   <Palette className="w-5 h-5 text-indigo-200" />
-                  <span>이 작품으로 굿즈 만들기</span>
+                  <span>이 포토카드 규격으로 편집·재단하기</span>
                 </Button>
               </Link>
             </div>

@@ -32,7 +32,11 @@ import {
   Sparkles,
   ShieldCheck,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  Scissors,
+  Maximize2,
+  Minimize2,
+  Crosshair
 } from 'lucide-react';
 
 export default function EditorPageWrapper() {
@@ -77,6 +81,7 @@ function EditorComponent() {
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [backgroundColor, setBackgroundColor] = useState<string>('#0B1329');
   const [showGuides, setShowGuides] = useState<boolean>(true);
+  const [previewMode, setPreviewMode] = useState<boolean>(false); // 포토카드 실물 다이컷(재단완료) 미리보기 모드
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [projectTitle, setProjectTitle] = useState<string>('나만의 웹툰 굿즈');
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -135,6 +140,45 @@ function EditorComponent() {
     if (!selectedElementId) return;
     setElements((prev) =>
       prev.map((el) => (el.id === selectedElementId ? { ...el, ...props } : el))
+    );
+  };
+
+  // 포토카드 재단 툴 헬퍼: 캔버스 꽉 채우기 (Fit to Bleed)
+  const fitToBleed = () => {
+    const targetId = selectedElementId || elements.find((el) => el.type === 'image')?.id;
+    if (!targetId) return;
+    setElements((prev) =>
+      prev.map((el) =>
+        el.id === targetId ? { ...el, x: 0, y: 0, width: canvasWidth, height: canvasHeight } : el
+      )
+    );
+  };
+
+  // 포토카드 재단 툴 헬퍼: 안전 영역 맞춤 (Fit to Safe Zone - 3mm 마진)
+  const fitToSafeZone = () => {
+    const margin = 18;
+    const targetW = canvasWidth - margin * 2;
+    const targetH = canvasHeight - margin * 2;
+    const targetId = selectedElementId || elements.find((el) => el.type === 'image')?.id;
+    if (!targetId) return;
+    setElements((prev) =>
+      prev.map((el) =>
+        el.id === targetId ? { ...el, x: margin, y: margin, width: targetW, height: targetH } : el
+      )
+    );
+  };
+
+  // 포토카드 재단 툴 헬퍼: 중앙 정렬
+  const centerElement = () => {
+    const targetId = selectedElementId || elements.find((el) => el.type === 'image')?.id;
+    if (!targetId) return;
+    setElements((prev) =>
+      prev.map((el) => {
+        if (el.id !== targetId) return el;
+        const centerX = Math.round((canvasWidth - el.width) / 2);
+        const centerY = Math.round((canvasHeight - el.height) / 2);
+        return { ...el, x: centerX, y: centerY };
+      })
     );
   };
 
@@ -553,106 +597,213 @@ function EditorComponent() {
           </div>
         </div>
 
-        {/* Center: Canvas Workspace */}
-        <div className="flex-1 bg-slate-950 p-6 flex flex-col items-center justify-center overflow-auto relative">
-          {/* Print Quality Badge & Controls */}
-          <div className="mb-4 flex items-center gap-3 bg-slate-900/90 backdrop-blur-md px-4 py-2 rounded-2xl border border-slate-800 text-xs">
-            <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              <span>300 DPI 인쇄 최적</span>
-            </span>
-            <span className="text-slate-600">|</span>
-            <span className="text-slate-300">
-              규격: {selectedProduct.widthMm}x{selectedProduct.heightMm}mm
-            </span>
-            <span className="text-slate-600">|</span>
-            <button
-              onClick={() => setShowGuides(!showGuides)}
-              className={`flex items-center gap-1 font-semibold transition-colors ${
-                showGuides ? 'text-indigo-400' : 'text-slate-500'
-              }`}
-            >
-              {showGuides ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-              <span>인쇄 가이드선 {showGuides ? 'ON' : 'OFF'}</span>
-            </button>
+        {/* Center: Canvas Workspace (포토카드 출력·재단 툴 스튜디오) */}
+        <div className="flex-1 bg-slate-950 p-6 flex flex-col items-center justify-center overflow-auto relative select-none">
+          {/* Print & Die-cut Tool Action Bar */}
+          <div className="mb-4 flex flex-wrap items-center justify-center gap-2 bg-slate-900/90 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-slate-800 text-xs shadow-xl z-10">
+            <div className="flex items-center gap-2 pr-2 border-r border-slate-800">
+              <span className="flex items-center gap-1 text-emerald-400 font-bold">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                <span>300 DPI</span>
+              </span>
+              <span className="text-slate-400 font-medium">
+                {selectedProduct.widthMm}x{selectedProduct.heightMm}mm
+              </span>
+            </div>
+
+            {/* Quick Auto-Fit & Alignment Tools */}
+            <div className="flex items-center gap-1.5 px-1">
+              <button
+                onClick={fitToBleed}
+                title="재단 여백까지 캔버스 꽉 채우기"
+                className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-medium flex items-center gap-1 transition-colors border border-slate-700"
+              >
+                <Maximize2 className="w-3 h-3 text-indigo-400" />
+                <span>꽉 채우기</span>
+              </button>
+
+              <button
+                onClick={fitToSafeZone}
+                title="잘림 없는 안전 영역(3mm 안쪽)에 맞추기"
+                className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-medium flex items-center gap-1 transition-colors border border-slate-700"
+              >
+                <Minimize2 className="w-3 h-3 text-emerald-400" />
+                <span>안전 영역</span>
+              </button>
+
+              <button
+                onClick={centerElement}
+                title="캔버스 정중앙 정렬"
+                className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-medium flex items-center gap-1 transition-colors border border-slate-700"
+              >
+                <Crosshair className="w-3 h-3 text-amber-400" />
+                <span>중앙 정렬</span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
+              {/* Guides Toggle */}
+              <button
+                onClick={() => setShowGuides(!showGuides)}
+                className={`flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg border font-semibold transition-all ${
+                  showGuides
+                    ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300'
+                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
+                }`}
+              >
+                {showGuides ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                <span>재단선 {showGuides ? 'ON' : 'OFF'}</span>
+              </button>
+
+              {/* Die-cut Real Preview Toggle */}
+              <button
+                onClick={() => setPreviewMode(!previewMode)}
+                className={`flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg border font-bold transition-all shadow-md ${
+                  previewMode
+                    ? 'bg-gradient-to-r from-pink-600 to-indigo-600 border-indigo-400 text-white shadow-indigo-500/20'
+                    : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+                <span>{previewMode ? '편집 모드로' : '실물 카드 보기'}</span>
+              </button>
+            </div>
           </div>
 
-          {/* Canvas Wrapper with Visual Guidelines */}
-          <div
-            className="relative shadow-2xl rounded-sm transition-transform duration-200"
-            style={{
-              width: canvasWidth,
-              height: canvasHeight,
-              transform: `scale(${zoomLevel / 100})`,
-            }}
-          >
-            {/* HTML5 Canvas */}
-            <canvas
-              ref={canvasRef}
-              width={canvasWidth}
-              height={canvasHeight}
-              className="w-full h-full block rounded-sm shadow-2xl"
-            />
-
-            {/* Print Guide Lines Overlay */}
-            {showGuides && (
+          {/* Canvas Wrapper with Visual Guidelines & Registration Crop Marks */}
+          <div className="relative p-4">
+            {/* Registration Crop Marks (인쇄소 십자 정합 재단 눈금) */}
+            {!previewMode && showGuides && (
               <div className="absolute inset-0 pointer-events-none">
-                {/* Bleed line (Red dashed border - 2mm outside margin simulated) */}
-                <div className="absolute inset-0 border-2 border-dashed border-rose-500/60" />
-                {/* Safe zone line (Green dashed border - 3mm inner margin) */}
-                <div className="absolute inset-3 border border-dashed border-emerald-400/70" />
+                {/* Top-Left Crop Mark */}
+                <div className="absolute top-1 left-1 w-3 h-0.5 bg-rose-500/70" />
+                <div className="absolute top-1 left-1 w-0.5 h-3 bg-rose-500/70" />
+                {/* Top-Right Crop Mark */}
+                <div className="absolute top-1 right-1 w-3 h-0.5 bg-rose-500/70" />
+                <div className="absolute top-1 right-1 w-0.5 h-3 bg-rose-500/70" />
+                {/* Bottom-Left Crop Mark */}
+                <div className="absolute bottom-1 left-1 w-3 h-0.5 bg-rose-500/70" />
+                <div className="absolute bottom-1 left-1 w-0.5 h-3 bg-rose-500/70" />
+                {/* Bottom-Right Crop Mark */}
+                <div className="absolute bottom-1 right-1 w-3 h-0.5 bg-rose-500/70" />
+                <div className="absolute bottom-1 right-1 w-0.5 h-3 bg-rose-500/70" />
               </div>
             )}
 
-            {/* Interactive Elements Overlay for Click/Selection & Drag */}
-            <div className="absolute inset-0">
-              {elements.map((el) => {
-                const isSelected = el.id === selectedElementId;
-                return (
-                  <div
-                    key={el.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedElementId(el.id);
-                    }}
-                    style={{
-                      left: el.x,
-                      top: el.y,
-                      width: el.width,
-                      height: el.height,
-                      transform: `rotate(${el.rotation}deg)`,
-                      zIndex: el.zIndex,
-                    }}
-                    className={`absolute cursor-move select-none ${
-                      isSelected
-                        ? 'ring-2 ring-indigo-500 ring-offset-1 ring-offset-slate-900'
-                        : 'hover:ring-1 hover:ring-indigo-400/50'
-                    }`}
-                  >
-                    {isSelected && (
-                      <div className="absolute -top-3 -right-3 w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px] shadow">
-                        ✓
-                      </div>
-                    )}
+            {/* Core Card Canvas Container */}
+            <div
+              className={`relative shadow-2xl transition-all duration-300 ${
+                previewMode
+                  ? 'rounded-2xl overflow-hidden ring-2 ring-white/20 shadow-[0_20px_60px_-15px_rgba(79,70,229,0.4)]'
+                  : 'rounded-none shadow-slate-950/80 ring-1 ring-slate-800'
+              }`}
+              style={{
+                width: canvasWidth,
+                height: canvasHeight,
+                transform: `scale(${zoomLevel / 100})`,
+              }}
+            >
+              {/* HTML5 Canvas */}
+              <canvas
+                ref={canvasRef}
+                width={canvasWidth}
+                height={canvasHeight}
+                className="w-full h-full block"
+              />
+
+              {/* Glossy Hologram Highlight Overlay in Real Preview Mode */}
+              {previewMode && (
+                <div className="absolute inset-0 pointer-events-none bg-gradient-to-tr from-transparent via-white/10 to-transparent mix-blend-overlay" />
+              )}
+
+              {/* Print Guide Lines Overlay (재단선·안전선) */}
+              {!previewMode && showGuides && (
+                <div className="absolute inset-0 pointer-events-none">
+                  {/* Bleed line (2mm 여백 - 빨간색 점선) */}
+                  <div className="absolute inset-0 border-2 border-dashed border-rose-500/70">
+                    <span className="absolute top-1 left-1.5 text-[9px] font-bold text-rose-400 bg-slate-950/80 px-1 py-0.5 rounded leading-none">
+                      외곽 재단 여백(Bleed 2mm)
+                    </span>
                   </div>
-                );
-              })}
+
+                  {/* Cut Line / Trim line (55x85mm R4 라운드 다이커팅 칼선 - 노란색 라인) */}
+                  <div className="absolute inset-2 border-2 border-amber-400/90 rounded-2xl">
+                    <span className="absolute top-1 right-1.5 text-[9px] font-bold text-amber-300 bg-slate-950/80 px-1 py-0.5 rounded leading-none flex items-center gap-0.5">
+                      <Scissors className="w-2.5 h-2.5 inline" />
+                      <span>재단 칼선(R4 다이컷)</span>
+                    </span>
+                  </div>
+
+                  {/* Safe zone line (3mm 안쪽 마진 - 초록색 점선) */}
+                  <div className="absolute inset-4 border border-dashed border-emerald-400/80 rounded-xl">
+                    <span className="absolute bottom-1 left-1.5 text-[9px] font-bold text-emerald-400 bg-slate-950/80 px-1 py-0.5 rounded leading-none">
+                      안전 영역(Safe Zone)
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Interactive Elements Overlay for Click/Selection & Drag */}
+              {!previewMode && (
+                <div className="absolute inset-0">
+                  {elements.map((el) => {
+                    const isSelected = el.id === selectedElementId;
+                    return (
+                      <div
+                        key={el.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedElementId(el.id);
+                        }}
+                        style={{
+                          left: el.x,
+                          top: el.y,
+                          width: el.width,
+                          height: el.height,
+                          transform: `rotate(${el.rotation}deg)`,
+                          zIndex: el.zIndex,
+                        }}
+                        className={`absolute cursor-move select-none ${
+                          isSelected
+                            ? 'ring-2 ring-indigo-500 ring-offset-1 ring-offset-slate-900'
+                            : 'hover:ring-1 hover:ring-indigo-400/50'
+                        }`}
+                      >
+                        {isSelected && (
+                          <div className="absolute -top-3 -right-3 w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px] shadow">
+                            ✓
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
 
           {/* Guide Legend */}
-          {showGuides && (
-            <div className="mt-4 flex items-center gap-4 text-[11px] text-slate-400">
-              <span className="flex items-center gap-1">
+          {!previewMode && showGuides ? (
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-4 text-[11px] text-slate-400 bg-slate-900/60 px-4 py-1.5 rounded-full border border-slate-800/80">
+              <span className="flex items-center gap-1.5">
                 <span className="w-3 h-0.5 bg-rose-500 inline-block" />
-                <span>재단선(Bleed 2mm)</span>
+                <span>재단 여백 (Bleed 2mm)</span>
               </span>
-              <span className="flex items-center gap-1">
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-0.5 bg-amber-400 inline-block" />
+                <span>실제 재단 칼선 (R4 라운드 55x85mm)</span>
+              </span>
+              <span className="flex items-center gap-1.5">
                 <span className="w-3 h-0.5 bg-emerald-400 inline-block" />
-                <span>안전 여백(Safe Zone 3mm)</span>
+                <span>인쇄 안전 영역 (Safe Zone 3mm)</span>
               </span>
             </div>
-          )}
+          ) : previewMode ? (
+            <div className="mt-3 flex items-center gap-2 text-xs text-indigo-300 font-semibold bg-indigo-950/60 border border-indigo-500/30 px-3 py-1.5 rounded-full">
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <span>실제 키오스크 및 인쇄소에서 R4 라운드 코너로 재단되어 출력되는 실물 모습입니다.</span>
+            </div>
+          ) : null}
         </div>
 
         {/* Right: Property Inspector Panel */}
