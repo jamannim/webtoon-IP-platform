@@ -1152,7 +1152,7 @@ export const MOCK_LICENSES: License[] = [
   }
 ];
 
-// 30개 전체 웹툰 IP 포토카드 출력 규격(55x85mm, 340x525px) 기본 템플릿 매핑
+// 30개 전체 웹툰 IP 포토카드 출력 규격(55x85mm, 340x525px) 기본 템플릿 매핑 (텍스트 박스 없이 순수 원화 일러스트 풀블리드 탑재)
 const WEBTOON_PHOTOCARD_TEMPLATES: ProductTemplate[] = MOCK_WEBTOON_IPS.map((ip) => ({
   id: 'tpl-' + ip.id + '-photocard',
   productId: 'prod-photocard',
@@ -1172,40 +1172,6 @@ const WEBTOON_PHOTOCARD_TEMPLATES: ProductTemplate[] = MOCK_WEBTOON_IPS.map((ip)
       height: 525,
       rotation: 0,
       zIndex: 1,
-      opacity: 1
-    },
-    {
-      id: 'el-badge-' + ip.id,
-      type: 'text',
-      text: '★ OFFICIAL PHOTOCARD',
-      fontFamily: 'sans-serif',
-      fontSize: 9,
-      fontWeight: 'bold',
-      color: '#A5B4FC',
-      textAlign: 'center',
-      x: 20,
-      y: 450,
-      width: 300,
-      height: 18,
-      rotation: 0,
-      zIndex: 3,
-      opacity: 0.95
-    },
-    {
-      id: 'el-title-' + ip.id,
-      type: 'text',
-      text: ip.title,
-      fontFamily: 'sans-serif',
-      fontSize: 16,
-      fontWeight: 'bold',
-      color: '#FFFFFF',
-      textAlign: 'center',
-      x: 20,
-      y: 472,
-      width: 300,
-      height: 30,
-      rotation: 0,
-      zIndex: 3,
       opacity: 1
     }
   ]
@@ -1253,23 +1219,6 @@ export const MOCK_TEMPLATES: ProductTemplate[] = [
         rotation: 15,
         zIndex: 2,
         opacity: 0.9
-      },
-      {
-        id: 'el-title-1',
-        type: 'text',
-        text: 'RAY ASTER',
-        fontFamily: 'sans-serif',
-        fontSize: 16,
-        fontWeight: '900',
-        color: '#FFFFFF',
-        textAlign: 'center',
-        x: 20,
-        y: 250,
-        width: 160,
-        height: 25,
-        rotation: 0,
-        zIndex: 3,
-        opacity: 1
       }
     ]
   },
@@ -1311,23 +1260,6 @@ export const MOCK_TEMPLATES: ProductTemplate[] = [
         height: 45,
         rotation: -10,
         zIndex: 2,
-        opacity: 1
-      },
-      {
-        id: 'el-viola-text',
-        type: 'text',
-        text: 'Secret Greenhouse',
-        fontFamily: 'serif',
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: '#FDE047',
-        textAlign: 'center',
-        x: 20,
-        y: 255,
-        width: 160,
-        height: 25,
-        rotation: 0,
-        zIndex: 3,
         opacity: 1
       }
     ]
