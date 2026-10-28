@@ -17,8 +17,13 @@ import {
   ArrowLeft, 
   CheckCircle2,
   Lock,
-  ChevronRight
+  ChevronRight,
+  User,
+  Phone,
+  Gift,
+  LogIn
 } from 'lucide-react';
+import AuthModal from '@/components/auth/AuthModal';
 
 export default function CheckoutPageWrapper() {
   return (
@@ -31,7 +36,19 @@ export default function CheckoutPageWrapper() {
 function CheckoutComponent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { projects, products, webtoons, createOrder } = useAppStore();
+  const { projects, products, webtoons, createOrder, currentUser, isLoggedIn } = useAppStore();
+
+  // Guest Order State
+  const [isGuestMode, setIsGuestMode] = useState<boolean>(!isLoggedIn);
+  const [guestPhone, setGuestPhone] = useState<string>('010-9876-5432');
+  const [guestPassword, setGuestPassword] = useState<string>('1234');
+  const [guestName, setGuestName] = useState<string>('비회원 고객');
+  const [agreeGuestTerms, setAgreeGuestTerms] = useState<boolean>(true);
+  const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
+
+  // Member Points State
+  const [usePoints, setUsePoints] = useState<boolean>(false);
+  const pointsAvailable = currentUser?.points || 1000;
 
   const projectId = searchParams.get('projectId');
   const project = projects.find((p) => p.id === projectId) || projects[0];
@@ -61,7 +78,8 @@ function CheckoutComponent() {
   const unitPrice = product.basePrice + (coating.includes('홀로그램') ? 200 : 0);
   const itemTotal = unitPrice * quantity;
   const shippingFee = fulfillmentType === 'DELIVERY' ? 3000 : 0;
-  const finalAmount = itemTotal + shippingFee;
+  const discountAmount = (!isGuestMode && usePoints) ? Math.min(1000, itemTotal) : 0;
+  const finalAmount = Math.max(0, itemTotal + shippingFee - discountAmount);
 
   const handleOpenPG = (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,9 +102,15 @@ function CheckoutComponent() {
         options: { paperType, coating },
         fulfillmentType,
         paymentMethod,
+        isGuest: isGuestMode,
+        guestInfo: isGuestMode ? {
+          phone: guestPhone,
+          password: guestPassword,
+          name: guestName
+        } : undefined,
         shippingInfo:
           fulfillmentType === 'DELIVERY'
-            ? { recipient, phone, address, detailAddress, postalCode }
+            ? { recipient, phone: isGuestMode ? guestPhone : phone, address, detailAddress, postalCode }
             : undefined,
       });
 
@@ -119,6 +143,141 @@ function CheckoutComponent() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Form: Options & Fulfillment */}
         <div className="lg:col-span-7 space-y-6">
+          {/* 0. Member vs Guest Order Selection Card (PRD Flow) */}
+          <div className="rounded-2xl bg-slate-900/90 border border-slate-800 p-5 space-y-4 shadow-lg">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold text-white flex items-center gap-2">
+                <User className="w-4 h-4 text-indigo-400" />
+                <span>주문 고객 유형 선택</span>
+              </span>
+              <Badge variant={!isGuestMode ? 'success' : 'slate'} size="sm">
+                {!isGuestMode ? '회원 혜택 적용' : '비회원 30초 간편 주문'}
+              </Badge>
+            </div>
+
+            {/* Mode Toggle Buttons */}
+            <div className="grid grid-cols-2 gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isLoggedIn) {
+                    setAuthModalOpen(true);
+                  } else {
+                    setIsGuestMode(false);
+                  }
+                }}
+                className={`py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  !isGuestMode
+                    ? 'bg-indigo-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <span>{isLoggedIn ? `${currentUser?.name} (회원)` : '회원 로그인/가입'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsGuestMode(true)}
+                className={`py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  isGuestMode
+                    ? 'bg-indigo-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Printer className="w-3.5 h-3.5 text-indigo-300" />
+                <span>비회원 즉시 주문</span>
+              </button>
+            </div>
+
+            {/* Member Active Card */}
+            {!isGuestMode && currentUser && (
+              <div className="p-3.5 rounded-xl bg-indigo-950/40 border border-indigo-500/30 flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-white">{currentUser.name} 님 로그인 중</span>
+                    <span className="text-[10px] text-indigo-300 bg-indigo-500/20 px-2 py-0.5 rounded-full font-semibold">
+                      보유: {pointsAvailable.toLocaleString()}P
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    주문 완료 시 7자리 코드가 마이페이지 보관함에 자동 저장됩니다.
+                  </p>
+                </div>
+
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-amber-300 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-700 hover:border-amber-400 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={usePoints}
+                    onChange={(e) => setUsePoints(e.target.checked)}
+                    className="rounded border-slate-700 text-indigo-600 focus:ring-0"
+                  />
+                  <span>1,000P 즉시 할인</span>
+                </label>
+              </div>
+            )}
+
+            {/* Guest Form Card */}
+            {isGuestMode && (
+              <div className="space-y-3.5 p-4 rounded-xl bg-slate-950/80 border border-slate-800">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-300 flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>비회원 키오스크 코드 수신 및 조회 정보</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setAuthModalOpen(true)}
+                    className="text-[11px] font-bold text-indigo-400 hover:text-indigo-300 underline"
+                  >
+                    1초 소셜 로그인하고 1,000P 받기 →
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+                      휴대폰 번호 * (7자리 인쇄코드 알림톡 수신)
+                    </label>
+                    <input
+                      type="tel"
+                      value={guestPhone}
+                      onChange={(e) => setGuestPhone(e.target.value)}
+                      placeholder="010-1234-5678"
+                      required
+                      className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+                      간편 비밀번호 (숫자 4자리 / 웹 조회용)
+                    </label>
+                    <input
+                      type="password"
+                      maxLength={4}
+                      value={guestPassword}
+                      onChange={(e) => setGuestPassword(e.target.value)}
+                      placeholder="1234"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono tracking-widest"
+                    />
+                  </div>
+                </div>
+
+                <label className="flex items-start gap-2 cursor-pointer text-[11px] text-slate-400 pt-1">
+                  <input
+                    type="checkbox"
+                    checked={agreeGuestTerms}
+                    onChange={(e) => setAgreeGuestTerms(e.target.checked)}
+                    className="mt-0.5 rounded border-slate-700 text-indigo-600 focus:ring-0"
+                  />
+                  <span>
+                    [필수] 비회원 주문 처리 및 키오스크 인쇄 코드 발송을 위한 개인정보 수집·이용에 동의합니다. (출력 완료 후 30일 보관)
+                  </span>
+                </label>
+              </div>
+            )}
+          </div>
           {/* 1. Fulfillment Type Selection */}
           <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-6 space-y-4">
             <h3 className="text-sm font-bold text-white flex items-center gap-2">

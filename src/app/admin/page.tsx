@@ -35,7 +35,7 @@ export default function AdminPage() {
   const [trackingInputs, setTrackingInputs] = useState<Record<string, string>>({});
 
   // RBAC Access Control
-  if (currentUser.role !== 'ADMIN') {
+  if (!currentUser || currentUser.role !== 'ADMIN') {
     return (
       <div className="flex-1 max-w-xl mx-auto px-4 py-20 text-center">
         <div className="w-16 h-16 rounded-3xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center mx-auto mb-4">
@@ -43,7 +43,7 @@ export default function AdminPage() {
         </div>
         <h2 className="text-2xl font-black text-white">관리자 전용 페이지</h2>
         <p className="text-xs text-slate-400 mt-2 max-w-md mx-auto leading-relaxed">
-          현재 계정({currentUser.name})은 일반 사용자 권한입니다.
+          현재 계정({currentUser ? currentUser.name : '비회원'})은 일반 사용자 권한입니다.
           테스트를 위해 아래 버튼을 누르면 관리자 계정으로 즉시 전환됩니다.
         </p>
         <div className="mt-6 flex items-center justify-center gap-3">
@@ -96,7 +96,7 @@ export default function AdminPage() {
 
         <div className="flex items-center gap-2">
           <Badge variant="warning">
-            관리자 접속 중: {currentUser.name}
+            관리자 접속 중: {currentUser ? currentUser.name : '비회원'}
           </Badge>
           <Button variant="secondary" size="sm" onClick={() => switchUser('user-1')}>
             <span>일반 팬 모드로 전환</span>

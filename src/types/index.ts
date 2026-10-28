@@ -9,6 +9,7 @@ export interface User {
   role: Role;
   avatarUrl: string;
   phone?: string;
+  points?: number;
   createdAt: string;
 }
 
@@ -178,11 +179,20 @@ export interface OrderItem {
   };
 }
 
+export interface GuestInfo {
+  phone: string;
+  password?: string; // 4자리 간편 비밀번호
+  name?: string;
+}
+
 export interface Order {
   id: string;
   orderNumber: string;
   userId: string;
   userName: string;
+  isGuest?: boolean;
+  guestPhone?: string;
+  guestPassword?: string;
   fulfillmentType: FulfillmentType;
   items: OrderItem[];
   itemCount: number;
@@ -197,6 +207,33 @@ export interface Order {
   printJob?: PrintJob;
   shipment?: Shipment;
   payment?: Payment;
+}
+
+export interface CreateOrderInput {
+  projectId: string;
+  projectTitle: string;
+  productId: string;
+  productName: string;
+  ipId: string;
+  ipTitle: string;
+  previewUrl: string;
+  quantity: number;
+  unitPrice: number;
+  options: {
+    paperType: string;
+    coating: string;
+  };
+  fulfillmentType: FulfillmentType;
+  paymentMethod: PaymentMethod;
+  shippingInfo?: {
+    recipient: string;
+    phone: string;
+    address: string;
+    detailAddress: string;
+    postalCode: string;
+  };
+  isGuest?: boolean;
+  guestInfo?: GuestInfo;
 }
 
 export type PaymentMethod = 'TOSSPAY' | 'KAKAOPAY' | 'NAVERPAY' | 'CARD' | 'KIOSK_ON_SITE';

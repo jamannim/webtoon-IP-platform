@@ -17,8 +17,14 @@ import {
   CheckCircle2,
   XCircle,
   Copy,
-  Check
+  Check,
+  LogIn,
+  UserPlus,
+  Sparkles,
+  Smartphone,
+  Lock
 } from 'lucide-react';
+import AuthModal from '@/components/auth/AuthModal';
 import Button from '@/components/common/Button';
 import Badge from '@/components/common/Badge';
 import Modal from '@/components/common/Modal';
@@ -27,14 +33,25 @@ export default function MyPage() {
   const router = useRouter();
   const { 
     currentUser, 
+    isLoggedIn,
     projects, 
     deleteProject, 
     orders, 
-    updateOrderStatus 
+    updateOrderStatus,
+    findGuestOrders,
+    mergeGuestOrdersToUser
   } = useAppStore();
 
-  const [activeTab, setActiveTab] = useState<'PROJECTS' | 'ORDERS'>('PROJECTS');
+  const [activeTab, setActiveTab] = useState<'PROJECTS' | 'ORDERS' | 'GUEST_LOOKUP'>('PROJECTS');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authDefaultTab, setAuthDefaultTab] = useState<'LOGIN' | 'SIGNUP' | 'GUEST_LOOKUP'>('LOGIN');
+
+  // Guest lookup inline state
+  const [guestPhoneInput, setGuestPhoneInput] = useState('');
+  const [guestPinInput, setGuestPinInput] = useState('');
+  const [guestResults, setGuestResults] = useState<typeof orders | null>(null);
+  const [mergeAlert, setMergeAlert] = useState<string | null>(null);
 
   // Refund Modal State
   const [refundModalOpen, setRefundModalOpen] = useState(false);
@@ -49,8 +66,29 @@ export default function MyPage() {
   };
 
   // User-filtered projects and orders
-  const myProjects = projects.filter((p) => p.userId === currentUser.id);
-  const myOrders = orders.filter((o) => o.userId === currentUser.id);
+  const myProjects = currentUser ? projects.filter((p) => p.userId === currentUser.id) : [];
+  const myOrders = currentUser ? orders.filter((o) => o.userId === currentUser.id) : [];
+
+  const handleInlineGuestSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!guestPhoneInput) {
+      alert('휴대폰 번호를 입력해 주세요.');
+      return;
+    }
+    const found = findGuestOrders(guestPhoneInput, guestPinInput);
+    setGuestResults(found);
+  };
+
+  const handleMergeToCurrent = (order: typeof orders[0]) => {
+    if (!currentUser) {
+      setAuthDefaultTab('SIGNUP');
+      setAuthModalOpen(true);
+      return;
+    }
+    mergeGuestOrdersToUser(order.guestPhone || guestPhoneInput, currentUser.id, currentUser.name);
+    setMergeAlert('주문 내역이 현재 회원 보관함으로 성공적으로 이관되었습니다!');
+    setTimeout(() => setMergeAlert(null), 3000);
+  };
 
   const handleRefundSubmit = () => {
     if (selectedOrderForRefund) {
@@ -59,6 +97,150 @@ export default function MyPage() {
       setSelectedOrderForRefund(null);
     }
   };
+
+  if (!currentUser) {
+    return (
+      <div className="flex-1 max-w-4xl mx-auto px-4 sm:px-6 py-12 w-full">
+        {/* Not logged in hero card */}
+        <div className="rounded-3xl bg-gradient-to-br from-indigo-950/60 to-slate-900 border border-slate-800 p-8 text-center space-y-4 mb-10 shadow-2xl">
+          <div className="w-16 h-16 rounded-3xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center mx-auto">
+            <LogIn className="w-8 h-8" />
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-white">로그인이 필요한 서비스입니다</h1>
+          <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto">
+            로그인하시면 나만의 웹툰 포토카드 디자인을 클라우드에 영구 보관하고, 실시간 키오스크 출력 코드를 관리하실 수 있습니다.
+          </p>
+          <div className="pt-2 flex items-center justify-center gap-3">
+            <Button
+              size="lg"
+              onClick={() => { setAuthDefaultTab('LOGIN'); setAuthModalOpen(true); }}
+              className="bg-indigo-600 shadow-indigo-500/30"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>1초 간편 로그인</span>
+            </Button>
+            <Button
+              size="lg"
+              variant="secondary"
+              onClick={() => { setAuthDefaultTab('SIGNUP'); setAuthModalOpen(true); }}
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>회원가입 (+1,000P)</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Inline Guest Order Lookup Section */}
+        <div className="rounded-3xl bg-slate-900/80 border border-slate-800 p-6 sm:p-8 space-y-6">
+          <div className="flex items-center gap-3 pb-4 border-b border-slate-800">
+            <Printer className="w-6 h-6 text-indigo-400" />
+            <div>
+              <h2 className="text-lg font-bold text-white">비회원 주문 및 인쇄 코드 즉시 조회</h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                비회원으로 주문하셨던 휴대폰 번호와 간편 비밀번호 4자리를 입력하세요.
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleInlineGuestSearch} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+            <div className="sm:col-span-5">
+              <label className="block text-xs font-semibold text-slate-400 mb-1">휴대폰 번호 *</label>
+              <input
+                type="tel"
+                value={guestPhoneInput}
+                onChange={(e) => setGuestPhoneInput(e.target.value)}
+                placeholder="01012345678"
+                required
+                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white"
+              />
+            </div>
+            <div className="sm:col-span-4">
+              <label className="block text-xs font-semibold text-slate-400 mb-1">간편 비밀번호 (4자리)</label>
+              <input
+                type="password"
+                maxLength={4}
+                value={guestPinInput}
+                onChange={(e) => setGuestPinInput(e.target.value)}
+                placeholder="1234"
+                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white font-mono tracking-widest"
+              />
+            </div>
+            <div className="sm:col-span-3">
+              <Button type="submit" className="w-full">
+                조회하기
+              </Button>
+            </div>
+          </form>
+
+          {/* Results */}
+          {guestResults !== null && (
+            <div className="space-y-4 pt-4 border-t border-slate-800">
+              <span className="text-xs font-bold text-slate-300 block">
+                조회된 비회원 주문 ({guestResults.length}건)
+              </span>
+
+              {guestResults.length > 0 ? (
+                <div className="grid grid-cols-1 gap-4">
+                  {guestResults.map((order) => (
+                    <div
+                      key={order.id}
+                      className="rounded-2xl bg-slate-950 border border-slate-800 p-5 flex flex-col sm:flex-row items-center justify-between gap-4"
+                    >
+                      <div className="space-y-1 text-left w-full sm:w-auto">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs text-slate-400">{order.orderNumber}</span>
+                          <Badge variant={order.printJob?.isPrinted ? 'slate' : 'success'}>
+                            {order.printJob?.isPrinted ? '출력 완료' : '키오스크 출력 대기중'}
+                          </Badge>
+                        </div>
+                        <h4 className="text-sm font-bold text-white">{order.items[0]?.projectTitle || '웹툰 굿즈'}</h4>
+                        {order.printJob && (
+                          <div className="flex items-center gap-2 pt-1">
+                            <span className="text-xs text-slate-400">7자리 인쇄 코드:</span>
+                            <span className="font-mono text-lg font-black text-amber-400">{order.printJob.printCode}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <Link href={`/kiosk?code=${order.printJob?.printCode.replace(/[^0-9]/g, '')}`}>
+                          <Button size="sm">
+                            <Printer className="w-3.5 h-3.5" />
+                            <span>키오스크 시뮬레이터</span>
+                          </Button>
+                        </Link>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => {
+                            setAuthDefaultTab('SIGNUP');
+                            setAuthModalOpen(true);
+                          }}
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                          <span>회원 이관</span>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-8 rounded-2xl bg-slate-950/50 text-center text-xs text-slate-500">
+                  해당 번호로 접수된 비회원 주문 내역이 없습니다.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <AuthModal
+          isOpen={authModalOpen}
+          onClose={() => setAuthModalOpen(false)}
+          defaultTab={authDefaultTab}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
@@ -226,7 +408,151 @@ export default function MyPage() {
               const printJob = order.printJob;
               const shipment = order.shipment;
 
-              return (
+              if (!currentUser) {
+    return (
+      <div className="flex-1 max-w-4xl mx-auto px-4 sm:px-6 py-12 w-full">
+        {/* Not logged in hero card */}
+        <div className="rounded-3xl bg-gradient-to-br from-indigo-950/60 to-slate-900 border border-slate-800 p-8 text-center space-y-4 mb-10 shadow-2xl">
+          <div className="w-16 h-16 rounded-3xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center mx-auto">
+            <LogIn className="w-8 h-8" />
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-white">로그인이 필요한 서비스입니다</h1>
+          <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto">
+            로그인하시면 나만의 웹툰 포토카드 디자인을 클라우드에 영구 보관하고, 실시간 키오스크 출력 코드를 관리하실 수 있습니다.
+          </p>
+          <div className="pt-2 flex items-center justify-center gap-3">
+            <Button
+              size="lg"
+              onClick={() => { setAuthDefaultTab('LOGIN'); setAuthModalOpen(true); }}
+              className="bg-indigo-600 shadow-indigo-500/30"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>1초 간편 로그인</span>
+            </Button>
+            <Button
+              size="lg"
+              variant="secondary"
+              onClick={() => { setAuthDefaultTab('SIGNUP'); setAuthModalOpen(true); }}
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>회원가입 (+1,000P)</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Inline Guest Order Lookup Section */}
+        <div className="rounded-3xl bg-slate-900/80 border border-slate-800 p-6 sm:p-8 space-y-6">
+          <div className="flex items-center gap-3 pb-4 border-b border-slate-800">
+            <Printer className="w-6 h-6 text-indigo-400" />
+            <div>
+              <h2 className="text-lg font-bold text-white">비회원 주문 및 인쇄 코드 즉시 조회</h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                비회원으로 주문하셨던 휴대폰 번호와 간편 비밀번호 4자리를 입력하세요.
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleInlineGuestSearch} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+            <div className="sm:col-span-5">
+              <label className="block text-xs font-semibold text-slate-400 mb-1">휴대폰 번호 *</label>
+              <input
+                type="tel"
+                value={guestPhoneInput}
+                onChange={(e) => setGuestPhoneInput(e.target.value)}
+                placeholder="01012345678"
+                required
+                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white"
+              />
+            </div>
+            <div className="sm:col-span-4">
+              <label className="block text-xs font-semibold text-slate-400 mb-1">간편 비밀번호 (4자리)</label>
+              <input
+                type="password"
+                maxLength={4}
+                value={guestPinInput}
+                onChange={(e) => setGuestPinInput(e.target.value)}
+                placeholder="1234"
+                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white font-mono tracking-widest"
+              />
+            </div>
+            <div className="sm:col-span-3">
+              <Button type="submit" className="w-full">
+                조회하기
+              </Button>
+            </div>
+          </form>
+
+          {/* Results */}
+          {guestResults !== null && (
+            <div className="space-y-4 pt-4 border-t border-slate-800">
+              <span className="text-xs font-bold text-slate-300 block">
+                조회된 비회원 주문 ({guestResults.length}건)
+              </span>
+
+              {guestResults.length > 0 ? (
+                <div className="grid grid-cols-1 gap-4">
+                  {guestResults.map((order) => (
+                    <div
+                      key={order.id}
+                      className="rounded-2xl bg-slate-950 border border-slate-800 p-5 flex flex-col sm:flex-row items-center justify-between gap-4"
+                    >
+                      <div className="space-y-1 text-left w-full sm:w-auto">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs text-slate-400">{order.orderNumber}</span>
+                          <Badge variant={order.printJob?.isPrinted ? 'slate' : 'success'}>
+                            {order.printJob?.isPrinted ? '출력 완료' : '키오스크 출력 대기중'}
+                          </Badge>
+                        </div>
+                        <h4 className="text-sm font-bold text-white">{order.items[0]?.projectTitle || '웹툰 굿즈'}</h4>
+                        {order.printJob && (
+                          <div className="flex items-center gap-2 pt-1">
+                            <span className="text-xs text-slate-400">7자리 인쇄 코드:</span>
+                            <span className="font-mono text-lg font-black text-amber-400">{order.printJob.printCode}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <Link href={`/kiosk?code=${order.printJob?.printCode.replace(/[^0-9]/g, '')}`}>
+                          <Button size="sm">
+                            <Printer className="w-3.5 h-3.5" />
+                            <span>키오스크 시뮬레이터</span>
+                          </Button>
+                        </Link>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => {
+                            setAuthDefaultTab('SIGNUP');
+                            setAuthModalOpen(true);
+                          }}
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                          <span>회원 이관</span>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-8 rounded-2xl bg-slate-950/50 text-center text-xs text-slate-500">
+                  해당 번호로 접수된 비회원 주문 내역이 없습니다.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <AuthModal
+          isOpen={authModalOpen}
+          onClose={() => setAuthModalOpen(false)}
+          defaultTab={authDefaultTab}
+        />
+      </div>
+    );
+  }
+
+  return (
                 <div
                   key={order.id}
                   className="rounded-2xl bg-slate-900/60 border border-slate-800 p-6 flex flex-col md:flex-row items-start justify-between gap-6"

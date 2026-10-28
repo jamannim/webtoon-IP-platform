@@ -246,7 +246,7 @@ function EditorComponent() {
 
     const project: DesignProject = {
       id: projParam || `proj-${Date.now()}`,
-      userId: currentUser.id,
+      userId: currentUser ? currentUser.id : 'guest-user',
       productId: selectedProduct.id,
       ipId: selectedIP.id,
       title: projectTitle,
@@ -281,7 +281,7 @@ function EditorComponent() {
 
       const project: DesignProject = {
         id: projParam || `proj-${Date.now()}`,
-        userId: currentUser.id,
+        userId: currentUser ? currentUser.id : 'guest-user',
         productId: selectedProduct.id,
         ipId: selectedIP.id,
         title: projectTitle,

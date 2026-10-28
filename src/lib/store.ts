@@ -12,7 +12,9 @@ import {
   PrintJob, 
   Settlement,
   FulfillmentType,
-  PaymentMethod
+  PaymentMethod,
+  CreateOrderInput,
+  GuestInfo
 } from '@/types';
 import { 
   MOCK_USERS, 
@@ -61,12 +63,14 @@ const INITIAL_PROJECTS: DesignProject[] = [
 ];
 
 export function useAppStore() {
-  const [currentUser, setCurrentUser] = useState<User>(MOCK_USERS[0]);
+  const [currentUser, setCurrentUser] = useState<User | null>(MOCK_USERS[0]);
   const [projects, setProjects] = useState<DesignProject[]>(INITIAL_PROJECTS);
   const [orders, setOrders] = useState<Order[]>(MOCK_ORDERS);
   const [webtoons, setWebtoons] = useState<WebtoonIP[]>(MOCK_WEBTOON_IPS);
   const [settlements, setSettlements] = useState<Settlement[]>(MOCK_SETTLEMENTS);
   const [isLoaded, setIsLoaded] = useState(false);
+
+  const isLoggedIn = currentUser !== null;
 
   // Initialize from LocalStorage
   useEffect(() => {
@@ -108,12 +112,63 @@ export function useAppStore() {
     }
   }, []);
 
-  // Switch Role/User
+  // Switch Role/User (데모 및 테스트용)
   const switchUser = useCallback((userId: string) => {
     const target = MOCK_USERS.find(u => u.id === userId) || MOCK_USERS[0];
     setCurrentUser(target);
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(target));
+    }
+  }, []);
+
+  // 소셜 간편 로그인 (카카오, 네이버, 구글, 이메일)
+  const loginBySocial = useCallback((provider: 'KAKAO' | 'NAVER' | 'GOOGLE' | 'EMAIL', emailInput?: string, nameInput?: string) => {
+    const providerNameMap = {
+      KAKAO: '카카오 굿즈러버',
+      NAVER: '네이버 웹툰팬',
+      GOOGLE: '구글 컬렉터',
+      EMAIL: '이메일 회원'
+    };
+    const user: User = {
+      id: `user-${provider.toLowerCase()}-${Date.now().toString(36)}`,
+      name: nameInput || providerNameMap[provider],
+      email: emailInput || `${provider.toLowerCase()}_user@example.com`,
+      role: 'USER',
+      avatarUrl: `https://images.unsplash.com/photo-${provider === 'KAKAO' ? '1534528741775-53994a69daeb' : '1535713875002-d1d0cf377fde'}?w=150`,
+      points: 1000,
+      createdAt: new Date().toISOString()
+    };
+    setCurrentUser(user);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
+    }
+    return user;
+  }, []);
+
+  // 신규 회원가입 (1초 가입 및 1,000P 지급)
+  const signup = useCallback((name: string, email: string, phone?: string) => {
+    const newUser: User = {
+      id: `user-${Date.now().toString(36)}`,
+      name,
+      email,
+      phone: phone || '010-0000-0000',
+      role: 'USER',
+      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+      points: 1000, // 신규 가입 축하 1,000 포인트
+      createdAt: new Date().toISOString()
+    };
+    setCurrentUser(newUser);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(newUser));
+    }
+    return newUser;
+  }, []);
+
+  // 로그아웃 (비회원/게스트 모드로 전환)
+  const logout = useCallback(() => {
+    setCurrentUser(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
     }
   }, []);
 
@@ -123,10 +178,9 @@ export function useAppStore() {
       const exists = prev.findIndex(p => p.id === project.id);
       let next: DesignProject[];
       if (exists >= 0) {
-        next = [...prev];
-        next[exists] = { ...project, updatedAt: new Date().toISOString() };
+        next = prev.map(p => p.id === project.id ? { ...project, updatedAt: new Date().toISOString() } : p);
       } else {
-        next = [{ ...project, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, ...prev];
+        next = [project, ...prev];
       }
       if (typeof window !== 'undefined') {
         localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(next));
@@ -146,28 +200,8 @@ export function useAppStore() {
     });
   }, []);
 
-  // Create Order with Kiosk Print Code or Delivery
-  const createOrder = useCallback((params: {
-    projectId: string;
-    projectTitle: string;
-    productId: string;
-    productName: string;
-    ipId: string;
-    ipTitle: string;
-    previewUrl: string;
-    quantity: number;
-    unitPrice: number;
-    options: { paperType: string; coating: string };
-    fulfillmentType: FulfillmentType;
-    paymentMethod: PaymentMethod;
-    shippingInfo?: {
-      recipient: string;
-      phone: string;
-      address: string;
-      detailAddress: string;
-      postalCode: string;
-    };
-  }): Order => {
+  // Create Order (회원 및 비회원 지원)
+  const createOrder = useCallback((params: CreateOrderInput): Order => {
     const timestamp = Date.now();
     const orderId = `ord-${timestamp}`;
     const randCode = Math.floor(1000000 + Math.random() * 9000000).toString(); // 7-digit code
@@ -201,11 +235,20 @@ export function useAppStore() {
       status: 'PREPARING' as const
     } : undefined;
 
+    const isGuestOrder = params.isGuest || !currentUser;
+    const userId = isGuestOrder ? `GUEST-${timestamp}` : (currentUser?.id || `user-${timestamp}`);
+    const userName = isGuestOrder 
+      ? (params.guestInfo?.name || '비회원 고객') 
+      : (currentUser?.name || '일반 회원');
+
     const newOrder: Order = {
       id: orderId,
       orderNumber,
-      userId: currentUser.id,
-      userName: currentUser.name,
+      userId,
+      userName,
+      isGuest: isGuestOrder,
+      guestPhone: params.guestInfo?.phone,
+      guestPassword: params.guestInfo?.password,
       fulfillmentType: params.fulfillmentType,
       itemCount: params.quantity,
       totalAmount,
@@ -254,6 +297,53 @@ export function useAppStore() {
 
     return newOrder;
   }, [currentUser]);
+
+  // 비회원 주문 및 인쇄 코드 조회 (전화번호 + 간편비밀번호)
+  const findGuestOrders = useCallback((phoneRaw: string, pinRaw?: string): Order[] => {
+    const cleanPhone = phoneRaw.replace(/[^0-9]/g, '');
+    return orders.filter(o => {
+      if (!o.isGuest || !o.guestPhone) return false;
+      const orderPhone = o.guestPhone.replace(/[^0-9]/g, '');
+      const phoneMatch = orderPhone === cleanPhone || orderPhone.endsWith(cleanPhone) || cleanPhone.endsWith(orderPhone);
+      if (!phoneMatch) return false;
+      if (pinRaw && o.guestPassword) {
+        return o.guestPassword === pinRaw.trim();
+      }
+      return true;
+    });
+  }, [orders]);
+
+  // 비회원 주문 내역을 회원 계정으로 이관 (Data Merging)
+  const mergeGuestOrdersToUser = useCallback((phoneRaw: string, targetUserId: string, targetUserName: string) => {
+    const cleanPhone = phoneRaw.replace(/[^0-9]/g, '');
+    let mergedCount = 0;
+
+    setOrders(prev => {
+      const next = prev.map(o => {
+        if (o.isGuest && o.guestPhone) {
+          const orderPhone = o.guestPhone.replace(/[^0-9]/g, '');
+          if (orderPhone === cleanPhone || orderPhone.endsWith(cleanPhone)) {
+            mergedCount++;
+            return {
+              ...o,
+              userId: targetUserId,
+              userName: targetUserName,
+              isGuest: false,
+              updatedAt: new Date().toISOString()
+            };
+          }
+        }
+        return o;
+      });
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(next));
+      }
+      return next;
+    });
+
+    return mergedCount;
+  }, []);
 
   // Kiosk Simulation: Verify and Print code
   const verifyPrintCode = useCallback((codeRaw: string): { success: boolean; order?: Order; message: string } => {
@@ -352,12 +442,18 @@ export function useAppStore() {
   return {
     isLoaded,
     currentUser,
+    isLoggedIn,
     switchUser,
+    loginBySocial,
+    signup,
+    logout,
     projects,
     saveProject,
     deleteProject,
     orders,
     createOrder,
+    findGuestOrders,
+    mergeGuestOrdersToUser,
     verifyPrintCode,
     completeKioskPrint,
     updateOrderStatus,

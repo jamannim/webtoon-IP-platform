@@ -17,8 +17,12 @@ import {
   Truck, 
   ShieldCheck, 
   QrCode,
-  Sparkles
+  Sparkles,
+  MessageSquare,
+  Gift,
+  UserPlus
 } from 'lucide-react';
+import AuthModal from '@/components/auth/AuthModal';
 
 interface OrderCompletePageProps {
   params: Promise<{ orderId: string }>;
@@ -27,8 +31,10 @@ interface OrderCompletePageProps {
 export default function OrderCompletePage({ params }: OrderCompletePageProps) {
   const resolvedParams = use(params);
   const router = useRouter();
-  const { orders } = useAppStore();
+  const { orders, currentUser, mergeGuestOrdersToUser } = useAppStore();
   const [copied, setCopied] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [isMerged, setIsMerged] = useState(false);
 
   const order = orders.find((o) => o.id === resolvedParams.orderId);
 
@@ -151,6 +157,67 @@ export default function OrderCompletePage({ params }: OrderCompletePageProps) {
           </div>
         </div>
       )}
+
+      {/* Guest Alimtalk & Member Conversion Banner (PRD Step G-4, G-6) */}
+      {order.isGuest && (
+        <div className="mt-8 rounded-3xl bg-slate-900 border border-slate-800 p-6 text-left space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center shrink-0">
+              <MessageSquare className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-bold text-white">카카오 알림톡(LMS) 발송 완료</h4>
+                <Badge variant="success" size="sm">전송 성공</Badge>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                수신 번호: <span className="font-mono text-slate-200 font-semibold">{order.guestPhone || '010-****-****'}</span> • 7자리 인쇄 코드 및 키오스크 위치 안내 전송됨
+              </p>
+            </div>
+          </div>
+
+          {!isMerged ? (
+            <div className="pt-3 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div>
+                <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                  <Gift className="w-4 h-4" />
+                  <span>1초 회원가입하고 이번 주문 내역 영구 보관하기</span>
+                </span>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  가입 즉시 1,000P 지급 및 마이페이지에서 72시간 내 언제든 코드를 재확인할 수 있습니다.
+                </p>
+              </div>
+
+              <Button
+                size="sm"
+                onClick={() => setAuthModalOpen(true)}
+                className="shrink-0 bg-gradient-to-r from-indigo-600 to-pink-600 shadow-md"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>회원가입 후 주문 연동</span>
+              </Button>
+            </div>
+          ) : (
+            <div className="pt-3 border-t border-slate-800 text-xs text-emerald-400 font-bold flex items-center gap-2">
+              <Check className="w-4 h-4" />
+              <span>회원 계정 보관함으로 이번 주문 내역이 성공적으로 이관되었습니다!</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Auth Modal for Guest Conversion */}
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        defaultTab="SIGNUP"
+        onSuccess={() => {
+          if (order.guestPhone && currentUser) {
+            mergeGuestOrdersToUser(order.guestPhone, currentUser.id, currentUser.name);
+            setIsMerged(true);
+          }
+        }}
+      />
 
       {/* Back to Mypage or Store */}
       <div className="mt-8 flex items-center justify-center gap-4">
