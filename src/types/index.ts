@@ -1,6 +1,8 @@
 // WEBTOON GOODS PLATFORM (TOON CANVAS) Type Definitions
 
 export type Role = 'USER' | 'CREATOR' | 'ADMIN';
+export type UserStatus = 'ACTIVE' | 'SUSPENDED' | 'WITHDRAWN';
+export type SocialProvider = 'KAKAO' | 'NAVER' | 'GOOGLE' | 'EMAIL';
 
 export interface User {
   id: string;
@@ -10,6 +12,12 @@ export interface User {
   avatarUrl: string;
   phone?: string;
   points?: number;
+  status?: UserStatus;
+  provider?: SocialProvider;
+  totalOrdersCount?: number;
+  totalSpendAmount?: number;
+  lastLoginAt?: string;
+  mergedGuestOrdersCount?: number;
   createdAt: string;
 }
 
@@ -33,10 +41,12 @@ export interface WebtoonIP {
   summary: string;
   bannerUrl: string;
   thumbnailUrl: string;
+  characterAssetUrl?: string; // 3번째 이미지: 캐릭터/굿즈 일러스트
+  additionalImages?: string[]; // 다중 등록된 이미지 목록
   status: WebtoonStatus;
   officialBadge: boolean;
   featured: boolean;
-  charactersCount: number;
+  charactersCount?: number;
   likesCount: number;
   releaseYear: number;
 }
@@ -279,11 +289,54 @@ export interface Settlement {
   id: string;
   ipId: string;
   ipTitle: string;
-  period: string; // e.g. "2026-10"
+  period: string; // e.g. "2026년 10월"
   totalOrders: number;
   totalRevenue: number;
-  royaltyRate: number; // e.g. 0.15
-  royaltyAmount: number;
+  pgFeeRate: number; // e.g. 0.033 (3.3%)
+  pgFeeAmount: number; // totalRevenue * pgFeeRate
+  netRevenue: number; // totalRevenue - pgFeeAmount (PG 수수료 차감 순매출)
+  royaltyCalculationBasis: 'NET_REVENUE' | 'GROSS_REVENUE'; // 로열티 산출 기준 (기본: NET_REVENUE)
+  royaltyRate: number; // e.g. 0.15 (15%)
+  royaltyAmount: number; // netRevenue * royaltyRate
   status: 'PENDING' | 'CONFIRMED' | 'PAID';
   settledAt?: string;
+}
+
+// 운영 감사로그 (Audit Log) 타입 정의
+export type AuditLogCategory = 'PAYMENT' | 'KIOSK' | 'LICENSE' | 'AUTH' | 'SYSTEM';
+export type AuditLogLevel = 'INFO' | 'WARN' | 'ERROR' | 'CRITICAL';
+export type AuditResolutionStatus = 'RESOLVED' | 'INVESTIGATING' | 'ACTION_REQUIRED' | 'AUTO_RECOVERED';
+
+export interface AuditLog {
+  id: string;
+  timestamp: string; // ISO 8601
+  category: AuditLogCategory;
+  level: AuditLogLevel;
+  actionCode: string; // e.g. KIOSK_PAPER_JAM, PAYMENT_PG_ERROR, LICENSE_UPDATED, ADMIN_LOGIN_FAIL
+  summary: string; // 한국어 요약 설명
+  actor: {
+    id: string;
+    name: string;
+    role: 'ADMIN' | 'SYSTEM' | 'KIOSK' | 'USER' | 'GUEST';
+    ipAddress?: string;
+    userAgent?: string;
+  };
+  target?: {
+    type: 'ORDER' | 'KIOSK' | 'IP' | 'USER' | 'SETTLEMENT';
+    id: string;
+    name?: string;
+  };
+  resolutionStatus: AuditResolutionStatus;
+  details: {
+    errorCode?: string;
+    errorMessage?: string;
+    kioskId?: string;
+    kioskLocation?: string;
+    hardwarePart?: string; // e.g. "포토 프린터 트레이 1", "다이컷 커터"
+    pgProvider?: string; // e.g. "토스페이먼츠", "카카오페이"
+    payload?: Record<string, unknown>;
+    actionGuide?: string; // 현장/운영자 대응 가이드
+    resolvedAt?: string;
+    resolvedBy?: string;
+  };
 }

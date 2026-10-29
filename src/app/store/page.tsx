@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useAppStore } from '@/lib/store';
-import { Search, Filter, ShieldCheck, Heart, Sparkles, ArrowRight, Scissors } from 'lucide-react';
+import { Search, Filter, ShieldCheck, Heart, Sparkles, ArrowRight, Scissors, Star } from 'lucide-react';
 import Badge from '@/components/common/Badge';
 
 export default function StorePage() {
@@ -12,12 +12,17 @@ export default function StorePage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortBy, setSortBy] = useState<'POPULAR' | 'NEWEST' | 'NAME'>('POPULAR');
 
-  const genres = ['전체', '현대 판타지', '무협/판타지', '로맨스 판타지', 'SF 액션', '학원 액션', '힐링 일상', '드라마'];
+  const genres = ['전체', '⭐ 메인추천', '현대 판타지', '무협/판타지', '로맨스 판타지', 'SF 액션', '학원 액션', '힐링 일상', '드라마'];
 
   const filteredWebtoons = useMemo(() => {
     return webtoons
       .filter((w) => {
-        const matchesGenre = selectedGenre === '전체' || w.genre === selectedGenre;
+        const matchesGenre =
+          selectedGenre === '전체'
+            ? true
+            : selectedGenre === '⭐ 메인추천'
+            ? w.featured
+            : w.genre === selectedGenre;
         const matchesSearch =
           w.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
           w.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -121,6 +126,13 @@ export default function StorePage() {
                       {ip.genre}
                     </Badge>
                   </div>
+
+                  {ip.featured && (
+                    <div className="absolute top-2.5 right-2.5 bg-pink-600/90 backdrop-blur-md px-2 py-0.5 rounded text-[10px] text-white font-bold border border-pink-400/40 flex items-center gap-1 shadow-md">
+                      <Star className="w-3 h-3 fill-white" />
+                      <span>추천</span>
+                    </div>
+                  )}
 
                   <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none">
                     <span className="bg-black/75 backdrop-blur-md px-2 py-0.5 rounded text-[10px] text-amber-300 font-bold border border-amber-500/40 flex items-center gap-1">

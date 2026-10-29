@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
@@ -52,7 +52,15 @@ export default function HomePage() {
     }
   };
 
-  const featuredIP = webtoons[0]; // Stella Knight
+  const featuredIP = useMemo(
+    () => webtoons.find((w) => w.featured && w.status === 'ACTIVE') || webtoons[0],
+    [webtoons]
+  );
+
+  const displayWebtoons = useMemo(() => {
+    const featured = webtoons.filter((w) => w.featured && w.status === 'ACTIVE');
+    return featured.length > 0 ? featured : webtoons.slice(0, 8);
+  }, [webtoons]);
 
   return (
     <div className="flex-1 flex flex-col">
@@ -246,7 +254,7 @@ export default function HomePage() {
 
         {/* IP Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {webtoons.map((ip) => (
+          {displayWebtoons.map((ip) => (
             <Link
               key={ip.id}
               href={`/store/${ip.id}`}
@@ -265,6 +273,12 @@ export default function HomePage() {
                       {ip.genre}
                     </Badge>
                   </div>
+                  {ip.featured && (
+                    <div className="absolute top-2.5 right-2.5 bg-pink-600/90 backdrop-blur-md px-2 py-0.5 rounded text-[10px] text-white font-bold border border-pink-400/30 flex items-center gap-1 shadow-sm">
+                      <Star className="w-3 h-3 fill-white" />
+                      <span>메인추천</span>
+                    </div>
+                  )}
                   {ip.officialBadge && (
                     <div className="absolute bottom-2.5 right-2.5 bg-black/70 backdrop-blur-md px-2 py-0.5 rounded text-[10px] text-emerald-400 font-bold border border-emerald-500/30 flex items-center gap-1">
                       <ShieldCheck className="w-3 h-3" />

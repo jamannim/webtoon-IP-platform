@@ -30,23 +30,15 @@ export default function Header() {
 
   const navLinks = [
     { href: '/', label: '홈', icon: Sparkles },
-    { href: '/store', label: '웹툰 스토어', icon: Store },
-    { href: '/editor', label: '굿즈 제작소', icon: Palette },
-    { href: '/kiosk', label: '키오스크 출력', icon: Printer },
+    { href: '/store', label: '스토어', icon: Store },
+    { href: '/editor', label: '상품', icon: Palette },
+    { href: '/kiosk', label: '출력', icon: Printer },
     { href: '/mypage', label: '마이페이지', icon: User },
-    { href: '/admin', label: '관리자 백오피스', icon: ShieldCheck, adminOnly: true }
+    { href: '/admin', label: 'ADMIN', icon: ShieldCheck, adminOnly: true }
   ];
 
   return (
     <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 text-white">
-      {/* Top Notice Banner */}
-      <div className="bg-gradient-to-r from-indigo-900/80 via-purple-900/80 to-pink-900/80 px-4 py-1.5 text-xs text-center text-indigo-200 border-b border-indigo-500/20 flex items-center justify-center gap-2">
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-500/30 text-indigo-300 border border-indigo-400/30">
-          테스트 환경
-        </span>
-        <span>웹툰 공식 라이선스 디지털 굿즈 플랫폼 • 7자리 코드로 전국 키오스크 즉시 출력</span>
-      </div>
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Brand Logo */}
         <Link href="/" className="flex items-center gap-2.5 group">
@@ -69,7 +61,6 @@ export default function Header() {
         {/* Desktop Nav Items */}
         <nav className="hidden md:flex items-center gap-1">
           {navLinks.map((item) => {
-            if (item.adminOnly && (!currentUser || currentUser.role !== 'ADMIN')) return null;
             const Icon = item.icon;
             const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
 
@@ -206,7 +197,6 @@ export default function Header() {
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-slate-800 bg-slate-900/95 px-4 pt-2 pb-6 space-y-1">
           {navLinks.map((item) => {
-            if (item.adminOnly && (!currentUser || currentUser.role !== 'ADMIN')) return null;
             const Icon = item.icon;
             const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
 
@@ -215,14 +205,16 @@ export default function Header() {
                 key={item.href}
                 href={item.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium ${
+                className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium ${
                   isActive
                     ? 'bg-indigo-600 text-white'
                     : 'text-slate-300 hover:bg-slate-800'
                 }`}
               >
-                <Icon className="w-5 h-5" />
-                <span>{item.label}</span>
+                <div className="flex items-center gap-3">
+                  <Icon className="w-5 h-5" />
+                  <span>{item.label}</span>
+                </div>
               </Link>
             );
           })}

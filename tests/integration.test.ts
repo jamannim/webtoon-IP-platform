@@ -1,4 +1,4 @@
-import { MOCK_WEBTOON_IPS, MOCK_PRODUCTS, MOCK_ORDERS, MOCK_SETTLEMENTS } from '../src/lib/mockData';
+import { MOCK_WEBTOON_IPS, MOCK_PRODUCTS, MOCK_ORDERS, MOCK_SETTLEMENTS, MOCK_AUDIT_LOGS } from '../src/lib/mockData';
 
 export function runIntegrationTests(): boolean {
   console.log('======================================================');
@@ -38,7 +38,7 @@ export function runIntegrationTests(): boolean {
     // Check expiry logic
     const expiresAt = new Date(sampleOrder.printJob.expiresAt).getTime();
     if (expiresAt <= Date.now()) {
-      console.error('FAIL: 발급된 인쇄 코드가 이미 만료되었습니다.');
+      console.error('FAIL: 인쇄 코드가 이미 만료 상태입니다.');
       allPassed = false;
     } else {
       const remainingHours = Math.round((expiresAt - Date.now()) / (1000 * 60 * 60));
@@ -46,7 +46,7 @@ export function runIntegrationTests(): boolean {
     }
   }
 
-  // Test 3: 주문 금액 및 결제 무결성 계산식 검증
+  // Test 3: 주문 결제 금액 정합성 검증
   console.log('\n[Scenario 3] 주문 금액 및 배송비 합산 공식 검증...');
   MOCK_ORDERS.forEach(order => {
     const calculatedItemTotal = order.items.reduce((acc, it) => acc + it.quantity * it.unitPrice, 0);
@@ -60,16 +60,27 @@ export function runIntegrationTests(): boolean {
   });
   console.log('PASS: 전체 주문 금액 무결성 계산 검증 통과.');
 
-  // Test 4: IP 작가 로열티 정산(Settlement) 수식 검증
-  console.log('\n[Scenario 4] 작가 로열티 정산 공식 (매출액 * 요율 = 정산금) 검증...');
+  // Test 4: IP 작가 로열티 정산(Settlement) 수식 검증 (PG 수수료 3.3% 차감 후 순매출 기준)
+  console.log('\n[Scenario 4] 작가 로열티 정산 공식 (순매출[매출액-PG수수료] * 요율 = 정산금) 검증...');
   MOCK_SETTLEMENTS.forEach(s => {
-    const expectedRoyalty = Math.round(s.totalRevenue * s.royaltyRate);
+    const expectedPgFee = Math.round(s.totalRevenue * s.pgFeeRate);
+    const expectedNetRevenue = s.totalRevenue - expectedPgFee;
+    const expectedRoyalty = Math.round(s.netRevenue * s.royaltyRate);
+    
+    if (s.pgFeeAmount !== expectedPgFee) {
+      console.error(`FAIL: 정산 ID ${s.id}의 PG 수수료(${s.pgFeeAmount})가 계산식(${expectedPgFee})과 불일치합니다.`);
+      allPassed = false;
+    }
+    if (s.netRevenue !== expectedNetRevenue) {
+      console.error(`FAIL: 정산 ID ${s.id}의 순매출(${s.netRevenue})이 계산식(${expectedNetRevenue})과 불일치합니다.`);
+      allPassed = false;
+    }
     if (s.royaltyAmount !== expectedRoyalty) {
       console.error(`FAIL: 정산 ID ${s.id}의 정산금(${s.royaltyAmount})이 수식(${expectedRoyalty})과 불일치합니다.`);
       allPassed = false;
     }
   });
-  console.log(`PASS: 총 ${MOCK_SETTLEMENTS.length}건 로열티 정산 공식 검증 통과.`);
+  console.log(`PASS: 총 ${MOCK_SETTLEMENTS.length}건 PG사 수수료(3.3%) 차감 및 로열티 정산 공식 검증 통과.`);
 
   // Test 5: 보안 - 비인가 관리자 접근 방지 시뮬레이션
   console.log('\n[Scenario 5] RBAC 보안 - 권한 분리 정책 검증...');
@@ -80,6 +91,21 @@ export function runIntegrationTests(): boolean {
     allPassed = false;
   } else {
     console.log('PASS: 일반 사용자(USER)의 백오피스 접근 통제 정책 확인.');
+  }
+
+  // Test 6: 운영 감사로그(Audit Logs) 세부 이슈 무결성 검증
+  console.log('\n[Scenario 6] 운영 감사로그(Audit Logs) 세부 이슈 무결성 검증...');
+  if (!MOCK_AUDIT_LOGS || MOCK_AUDIT_LOGS.length === 0) {
+    console.error('FAIL: 감사로그가 존재하지 않습니다.');
+    allPassed = false;
+  } else {
+    MOCK_AUDIT_LOGS.forEach(log => {
+      if (!log.id || !log.timestamp || !log.category || !log.level || !log.actionCode || !log.summary) {
+        console.error(`FAIL: 감사로그 ${log.id}에 필수 필드가 누락되었습니다.`);
+        allPassed = false;
+      }
+    });
+    console.log(`PASS: 총 ${MOCK_AUDIT_LOGS.length}건 운영 감사로그 세부 이슈 구조 무결성 검증 통과.`);
   }
 
   console.log('\n======================================================');

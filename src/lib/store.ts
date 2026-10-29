@@ -11,6 +11,10 @@ import {
   DesignAsset, 
   PrintJob, 
   Settlement,
+  AuditLog,
+  AuditResolutionStatus,
+  UserStatus,
+  SocialProvider,
   FulfillmentType,
   PaymentMethod,
   CreateOrderInput,
@@ -23,7 +27,8 @@ import {
   MOCK_TEMPLATES, 
   MOCK_DESIGN_ASSETS, 
   MOCK_ORDERS, 
-  MOCK_SETTLEMENTS 
+  MOCK_SETTLEMENTS,
+  MOCK_AUDIT_LOGS
 } from './mockData';
 
 const STORAGE_KEYS = {
@@ -32,6 +37,8 @@ const STORAGE_KEYS = {
   ORDERS: 'tooncanvas_orders',
   WEBTOONS: 'tooncanvas_webtoons',
   SETTLEMENTS: 'tooncanvas_settlements',
+  AUDIT_LOGS: 'tooncanvas_audit_logs',
+  USERS: 'tooncanvas_users',
 };
 
 // Initial design projects for immediate demo
@@ -40,8 +47,8 @@ const INITIAL_PROJECTS: DesignProject[] = [
     id: 'proj-demo-1',
     userId: 'user-1',
     productId: 'prod-photocard',
-    ipId: 'ip-stella-knight',
-    title: '성기사 레이 네온 홀로그램 포토카드',
+    ipId: 'ip-ranker-return',
+    title: '랭커의 귀환 네온 홀로그램 포토카드',
     elements: MOCK_TEMPLATES[0].defaultElements,
     background: '#0B1329',
     previewDataUrl: MOCK_TEMPLATES[0].previewUrl,
@@ -52,8 +59,8 @@ const INITIAL_PROJECTS: DesignProject[] = [
     id: 'proj-demo-2',
     userId: 'user-1',
     productId: 'prod-photocard',
-    ipId: 'ip-secret-greenhouse',
-    title: '비올라 영애 로즈 골드 에디션',
+    ipId: 'ip-twin-siblings',
+    title: '쌍둥이 남매 로즈 골드 에디션',
     elements: MOCK_TEMPLATES[1].defaultElements,
     background: '#831843',
     previewDataUrl: MOCK_TEMPLATES[1].previewUrl,
@@ -68,6 +75,8 @@ export function useAppStore() {
   const [orders, setOrders] = useState<Order[]>(MOCK_ORDERS);
   const [webtoons, setWebtoons] = useState<WebtoonIP[]>(MOCK_WEBTOON_IPS);
   const [settlements, setSettlements] = useState<Settlement[]>(MOCK_SETTLEMENTS);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>(MOCK_AUDIT_LOGS);
+  const [users, setUsers] = useState<User[]>(MOCK_USERS);
   const [isLoaded, setIsLoaded] = useState(false);
 
   const isLoggedIn = currentUser !== null;
@@ -98,12 +107,63 @@ export function useAppStore() {
 
       const storedWebtoons = localStorage.getItem(STORAGE_KEYS.WEBTOONS);
       if (storedWebtoons) {
-        setWebtoons(JSON.parse(storedWebtoons));
+        const parsed: WebtoonIP[] = JSON.parse(storedWebtoons);
+        const hasDummy = parsed.some((w) => 
+          w.id === 'ip-stella-knight' || 
+          w.id === 'ip-secret-greenhouse' || 
+          w.id === 'ip-underdog-high' || 
+          w.id === 'ip-moon-rabbit-attic'
+        );
+        if (hasDummy || parsed.length > 26) {
+          const cleaned = parsed.filter((w) => 
+            w.id !== 'ip-stella-knight' && 
+            w.id !== 'ip-secret-greenhouse' && 
+            w.id !== 'ip-underdog-high' && 
+            w.id !== 'ip-moon-rabbit-attic'
+          );
+          const finalWebtoons = cleaned.length === 26 ? cleaned : MOCK_WEBTOON_IPS;
+          setWebtoons(finalWebtoons);
+          localStorage.setItem(STORAGE_KEYS.WEBTOONS, JSON.stringify(finalWebtoons));
+        } else {
+          setWebtoons(parsed);
+        }
+      } else {
+        localStorage.setItem(STORAGE_KEYS.WEBTOONS, JSON.stringify(MOCK_WEBTOON_IPS));
       }
 
       const storedSettlements = localStorage.getItem(STORAGE_KEYS.SETTLEMENTS);
       if (storedSettlements) {
-        setSettlements(JSON.parse(storedSettlements));
+        const parsed = JSON.parse(storedSettlements);
+        // Ensure new schema with pgFeeRate exists
+        if (parsed.length > 0 && parsed[0].pgFeeRate !== undefined) {
+          setSettlements(parsed);
+        } else {
+          setSettlements(MOCK_SETTLEMENTS);
+          localStorage.setItem(STORAGE_KEYS.SETTLEMENTS, JSON.stringify(MOCK_SETTLEMENTS));
+        }
+      } else {
+        localStorage.setItem(STORAGE_KEYS.SETTLEMENTS, JSON.stringify(MOCK_SETTLEMENTS));
+      }
+
+      const storedLogs = localStorage.getItem(STORAGE_KEYS.AUDIT_LOGS);
+      if (storedLogs) {
+        setAuditLogs(JSON.parse(storedLogs));
+      } else {
+        localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(MOCK_AUDIT_LOGS));
+      }
+
+      const storedUsers = localStorage.getItem(STORAGE_KEYS.USERS);
+      if (storedUsers) {
+        const parsedUsers = JSON.parse(storedUsers);
+        // Ensure new users count matches or exceeds
+        if (parsedUsers.length >= MOCK_USERS.length) {
+          setUsers(parsedUsers);
+        } else {
+          setUsers(MOCK_USERS);
+          localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(MOCK_USERS));
+        }
+      } else {
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(MOCK_USERS));
       }
     } catch {
       // LocalStorage fallback
@@ -439,6 +499,92 @@ export function useAppStore() {
     });
   }, []);
 
+  // 신규 웹툰 IP 라이선스 등록 (Admin)
+  const addWebtoon = useCallback((newIp: WebtoonIP) => {
+    setWebtoons(prev => {
+      const next = [newIp, ...prev];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEYS.WEBTOONS, JSON.stringify(next));
+      }
+      return next;
+    });
+  }, []);
+
+  // 웹툰 IP 라이선스 정보 수정 (Admin)
+  const updateWebtoon = useCallback((ipId: string, updatedData: Partial<WebtoonIP>) => {
+    setWebtoons(prev => {
+      const next = prev.map(w => w.id === ipId ? { ...w, ...updatedData } : w);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEYS.WEBTOONS, JSON.stringify(next));
+      }
+      return next;
+    });
+  }, []);
+
+  // 웹툰 IP 라이선스 삭제 (Admin)
+  const deleteWebtoon = useCallback((ipId: string) => {
+    setWebtoons(prev => {
+      const next = prev.filter(w => w.id !== ipId);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEYS.WEBTOONS, JSON.stringify(next));
+      }
+      return next;
+    });
+  }, []);
+
+  // 회원 상태 변경 (정상 / 일시정지)
+  const updateUserStatus = useCallback((userId: string, status: UserStatus) => {
+    setUsers(prev => {
+      const updated = prev.map(u => u.id === userId ? { ...u, status } : u);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updated));
+      }
+      return updated;
+    });
+  }, []);
+
+  // 회원 포인트 지급/차감
+  const adjustUserPoints = useCallback((userId: string, pointDiff: number, reason?: string) => {
+    setUsers(prev => {
+      const updated = prev.map(u => {
+        if (u.id === userId) {
+          const newPoints = Math.max(0, (u.points || 0) + pointDiff);
+          return { ...u, points: newPoints };
+        }
+        return u;
+      });
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updated));
+      }
+      return updated;
+    });
+  }, []);
+
+  // 운영 감사로그 조치 상태 업데이트
+  const updateAuditLogStatus = useCallback((logId: string, status: AuditResolutionStatus, resolutionNote?: string) => {
+    setAuditLogs(prev => {
+      const updated = prev.map(log => {
+        if (log.id === logId) {
+          return {
+            ...log,
+            resolutionStatus: status,
+            details: {
+              ...log.details,
+              actionGuide: resolutionNote || log.details.actionGuide,
+              resolvedAt: new Date().toISOString(),
+              resolvedBy: '관리자 (수동 조치)'
+            }
+          };
+        }
+        return log;
+      });
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(updated));
+      }
+      return updated;
+    });
+  }, []);
+
   return {
     isLoaded,
     currentUser,
@@ -459,7 +605,15 @@ export function useAppStore() {
     updateOrderStatus,
     webtoons,
     updateWebtoonStatus,
+    addWebtoon,
+    updateWebtoon,
+    deleteWebtoon,
     settlements,
+    auditLogs,
+    updateAuditLogStatus,
+    users,
+    updateUserStatus,
+    adjustUserPoints,
     products: MOCK_PRODUCTS,
     templates: MOCK_TEMPLATES,
     assets: MOCK_DESIGN_ASSETS

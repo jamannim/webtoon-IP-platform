@@ -53,7 +53,7 @@ export default function Footer() {
 
         {/* Legal & Notice */}
         <div className="pt-8 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-4 text-slate-500">
-          <p>© 2026 TOON CANVAS Platform. All rights reserved. (MVP 데모 & 테스트 환경)</p>
+          <p>© 2026 TOON CANVAS Platform. All rights reserved.</p>
           <div className="flex items-center gap-4">
             <span className="hover:text-slate-400 cursor-pointer">이용약관</span>
             <span>•</span>

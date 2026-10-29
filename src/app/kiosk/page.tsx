@@ -143,7 +143,7 @@ function KioskComponent() {
                   </Badge>
                 </div>
                 <p className="text-xs text-slate-400">
-                  홍대입구역 9번 출구 GS25 스마트키오스크 1호기 • 300 DPI 포토프린터 탑재
+                  홍대입구역 9번 출구 GS25 스마트키오스크 1호기 • 300 DPI 웹툰 굿즈 전용 포토프린터 탑재
                 </p>
               </div>
             </div>
@@ -159,12 +159,17 @@ function KioskComponent() {
           <div className="grid grid-cols-1 md:grid-cols-12 gap-8 my-8">
             {/* Left: 7-Digit Touch Keypad */}
             <div className="md:col-span-6 space-y-4">
-              <div className="text-center sm:text-left">
-                <span className="text-xs font-bold text-slate-300 block mb-1">
-                  인쇄 코드 7자리 입력
-                </span>
-                <p className="text-[11px] text-slate-500">
-                  모바일 웹이나 앱에서 발급받은 번호를 터치패드로 입력하세요.
+              <div className="text-center sm:text-left space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-300 block">
+                    굿즈 인쇄 코드 7자리 입력
+                  </span>
+                  <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full">
+                    일반 문서 제외 • 굿즈 전용
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  일반 A4 문서는 출력되지 않으며, 툰캔버스에서 발급받은 <strong className="text-indigo-300">웹툰 포토카드·엽서·스티커 전용 7자리 코드</strong>를 입력하세요.
                 </p>
               </div>
 
